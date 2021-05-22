@@ -6,7 +6,7 @@ demographic model into
 [SLiM](https://messerlab.org/slim/).
 
 There are two conceptually related, but independent, bits of code here. 1) A Python
-script that loads a Demes YAML file and prints out a SLiM scipt, and 2) SLiM/Eidos
+script that loads a Demes YAML file and prints out a SLiM script, and 2) SLiM/Eidos
 code for loading a fully-resolved Demes JSON file and registering SLiM events.
 The code here is experimental and has not been rigorously tested.
 
