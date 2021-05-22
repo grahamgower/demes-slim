@@ -1,0 +1,541 @@
+// Return true if haystack contains needle as a substring, false otherwise.
+function (logical$)contains(string$ haystack, string$ needle) {
+    nlen = nchar(needle);
+    hlen = nchar(haystack);
+    if (nlen == 0 | hlen == 0) {
+        stop("both needle and haystack must have non-zero length");
+    }
+    if (hlen < nlen) {
+        return F;
+    }
+    for (i in 0:(hlen-nlen)) {
+        if (needle == substr(haystack, i, i+nlen-1)) {
+            return T;
+        }
+    }
+    return F;
+}
+
+function (void)print_scriptblock(object<SLiMEidosBlock>$ sb) {
+    cat(sb.start);
+    if (sb.start != sb.end) {
+        cat(":" + sb.end);
+    }
+
+    // Remove source lines containing "dbg(self)" before printing.
+    source = sb.source;
+    lines = strsplit(source, "\n");
+    dbg_lines = sapply(lines, '{return contains(applyValue, "dbg(self)");}');
+    lines = lines[which(!dbg_lines)];
+    source = paste(lines, sep="\n");
+
+    catn(" " + sb.type + "() " + source);
+}
+
+// Print the current scriptblock, but only in the "start" generation.
+function (void)dbg(object<SLiMEidosBlock>$ self_) {
+    if (verbosity > 0 & sim.generation == self_.start) {
+        print_scriptblock(self_);
+    }
+}
+
+// Round num to the nearest integer and return as an integer.
+function (integer)iround(numeric num) {
+    return asInteger(round(asFloat(num)));
+}
+
+// Return the number of rows in the given "dataframe" dictionary.
+function (integer$)nrow_dict(object<Dictionary> d) {
+    if (length(d.allKeys) == 0) {
+        return 0;
+    } else {
+        return length(d.getValue(d.allKeys[0]));
+    }
+}
+
+// Return the earliest finite time in the model.
+function (numeric$)first_event_time(object<Dictionary>$ data) {
+    t_max = 0.0;
+
+    for (deme in data.getValue("demes")) {
+        start_time = asFloat(deme.getValue("start_time"));
+        if (!isInfinite(start_time) & start_time > t_max) {
+            t_max = start_time;
+        }
+        first_epoch = deme.getValue("epochs")[0];
+        first_epoch_end_time = first_epoch.getValue("end_time");
+        if (first_epoch_end_time > t_max) {
+            t_max = first_epoch_end_time;
+        }
+    }
+
+    migrations = data.getValue("migration");
+    if (!isNULL(migrations)) {
+        for (migration in migrations) {
+            start_time = asFloat(migration.getValue("start_time"));
+            if (!isInfinite(start_time) & start_time > t_max) {
+                t_max = start_time;
+            }
+            end_time = migration.getValue("end_time");
+            if (end_time > t_max) {
+                t_max = end_time;
+            }
+        }
+    }
+
+    pulses = data.getValue("pulses");
+    if (!isNULL(pulses)) {
+        for (pulse in pulses) {
+            time = pulse.getValue("time");
+            if (time > t_max) {
+                t_max = time;
+            }
+        }
+    }
+
+    return t_max;
+}
+
+// Return the sum of the sizes of root demes.
+function (numeric$)N_root(object<Dictionary>$ data) {
+    N_root = 0.0;
+    for (deme in data.getValue("demes")) {
+        start_time = asFloat(deme.getValue("start_time"));
+        if (isInfinite(start_time)) {
+            first_epoch = deme.getValue("epochs")[0];
+            N_root = N_root + first_epoch.getValue("start_size");
+        }
+    }
+    return N_root;
+}
+
+function (integer$)register_scriptblocks(
+    object<Dictionary>$ data,
+    object<Dictionary> script_blocks, float$ scaling_factor, float$ burn_in
+) {
+    // Before the first event, we have a burn in phase that ends at t_start.
+    t_start = 1 + max(1, iround(N_root(data) * burn_in / scaling_factor));
+    // All registered events are relative to the first event.
+    t0 = first_event_time(data);
+
+    nrows = nrow_dict(script_blocks);
+    if (nrows > 0) {
+        for (i in 0:(nrows-1)) {
+            sb = script_blocks.getRowValues(i);
+            start = sb.getValue("start");
+            end = sb.getValue("end");
+            if (start == -1) {
+                start = 1;
+                end = 1;
+            } else {
+                start = t_start + iround((t0 - start) / scaling_factor);
+                end = t_start + iround((t0 - end) / scaling_factor);
+            }
+            type = sb.getValue("type");
+            lines = strsplit(sb.getValue("source"), "\n");
+            lines = c("dbg(self);", lines);
+            source = "{\n    " + paste(lines, sep="\n    ") + "\n}";
+            //catn("# registering " + start + ":" + end + " " + type + "()");
+            if (type == "early") {
+                sb = sim.registerEarlyEvent(NULL, source, start, end);
+            } else if (type == "late") {
+                sb = sim.registerLateEvent(NULL, source, start, end);
+            } else {
+                stop("only early and late scriptblocks are supported");
+            }
+        }
+    }
+
+    t_end = t_start + iround(t0 / scaling_factor);
+    return t_end;
+}
+
+/*
+ Add SLiM source lines to the script_blocks between the given start and
+ end times. The start and end times are in Demes units (generations ago), and
+ get scaled and translated into SLiM generations in register_scriptblocks().
+*/
+function (void)sb_add(
+    object<Dictionary> script_blocks, string lines, numeric$ start,
+    [Nif$ end = NULL], [string$ type = "early"]
+) {
+    if (isNULL(end)) {
+        end = start;
+    }
+    start = asFloat(start);
+    end = asFloat(end);
+
+    nrows = nrow_dict(script_blocks);
+    if (nrows > 0) {
+        for (i in 0:(nrows-1)) {
+            sb = script_blocks.getRowValues(i);
+            sb_start = sb.getValue("start");
+            sb_end = sb.getValue("end");
+            sb_type = sb.getValue("type");
+            if (sb_start == start & sb_end == end & sb_type == type) {
+                // Append lines to the existing script block.
+                //catn("# appending " + start + ":" + end + " " + type + "()");
+                sb_source = sb.getValue("source");
+                source = paste(c(sb_source, lines), sep="\n");
+                //catn("# appending: " + source);
+                sources = script_blocks.getValue("source");
+                sources[i] = source;
+                script_blocks.setValue("source", sources);
+                return;
+            }
+        }
+    }
+
+    // Create a new script block.
+    //catn("# adding " + start + ":" + end + " " + type + "()");
+    source = paste(lines, sep="\n");
+    sb = Dictionary("start", start, "end", end, "type", type, "source", source);
+    script_blocks.appendKeysAndValuesFrom(sb);
+}
+
+// Setup the initial demes and migrations for the burn in.
+function (void)setup_root_demes(
+    object<Dictionary>$ data, object<Dictionary> script_blocks,
+    object<Dictionary>$ deme_id, numeric$ scaling_factor
+) {
+    lines = c();
+
+    for (deme in data.getValue("demes")) {
+        start_time = asFloat(deme.getValue("start_time"));
+        if (isInfinite(start_time)) {
+            name = deme.getValue("name");
+            id = deme_id.getValue(name);
+            first_epoch = deme.getValue("epochs")[0];
+            start_size = iround(first_epoch.getValue("start_size") / scaling_factor);
+            selfing_rate = first_epoch.getValue("selfing_rate");
+            cloning_rate = first_epoch.getValue("cloning_rate");
+            lines = c(
+                lines,
+                "// " + name + ": conjured from the void",
+                "sim.addSubpop(" + id + ", " + start_size + ");"
+            );
+            if (selfing_rate > 0) {
+                lines = c(lines, "p" + id + ".setSelfingRate(" + selfing_rate + ");");
+            }
+            if (cloning_rate > 0) {
+                lines = c(lines, "p" + id + ".setCloningRate(" + cloning_rate + ");");
+            }
+        }
+    }
+
+    migrations = data.getValue("migration");
+    if (!isNULL(migrations)) {
+        for (migration in migrations) {
+            start_time = asFloat(migration.getValue("start_time"));
+            if (isInfinite(start_time)) {
+                source = migration.getValue("source");
+                dest = migration.getValue("dest");
+                source_id = deme_id.getValue(source);
+                dest_id = deme_id.getValue(dest);
+                rate = scaling_factor * migration.getValue("rate");
+                lines = c(
+                    lines,
+                    "// " + source + " -> " + dest,
+                    "p" + dest_id + ".setMigrationRates(" + source_id + ", " + rate + ");"
+                );
+            }
+        }
+    }
+
+    sb_add(script_blocks, lines, -1, type="late");
+}
+
+/*
+  Construct and register the events that characterise the Demes model in 'data'.
+*/
+function (integer$)schedule_events(
+    object<Dictionary>$ data, [float$ scaling_factor = 1.0], [float$ burn_in = 10.0]
+) {
+    // Assign a numerical ID for each deme.
+    deme_id = Dictionary();
+    i = 0;
+    for (deme in data.getValue("demes")) {
+        deme_id.setValue(deme.getValue("name"), i);
+        i = i + 1;
+    }
+
+    script_blocks = Dictionary();
+    setup_root_demes(data, script_blocks, deme_id, scaling_factor);
+
+    for (deme in data.getValue("demes")) {
+        name = deme.getValue("name");
+        id = deme_id.getValue(name);
+        start_time = asFloat(deme.getValue("start_time"));
+        epochs = deme.getValue("epochs");
+        if (!isInfinite(start_time)) {
+            size = iround(epochs[0].getValue("start_size") / scaling_factor);
+            ancestors = deme.getValue("ancestors");
+            if (!(length(ancestors) > 0)) {
+                stop("deme " + name + " has finite start_time but no ancestors");
+            }
+            if (length(ancestors) == 1) {
+                anc_id = deme_id.getValue(ancestors[0]);
+                lines = c(
+                    "// " + name + ": split from " + ancestors[0],
+                    "sim.addSubpopSplit(" + id + ", " + size + ", " + anc_id + ");"
+                );
+                sb_add(script_blocks, lines, start_time);
+            } else {
+                // multiple ancestors
+                proportions = deme.getValue("proportions");
+                anc_id = c();
+                for (ancestor in ancestors) {
+                    anc_id = c(anc_id, deme_id.getValue(ancestor));
+                }
+                lines = c(
+                    "// " + name + ": admixture of " + paste(ancestors),
+                    "sim.addSubpop(" + id + ", " + size + ");",
+                    "p" + id + ".setMigrationRates(c(" + paste(anc_id, sep=", ") +
+                        "), c(" + paste(proportions, sep=", ") + "));"
+                );
+                sb_add(script_blocks, lines, start_time, type="early");
+
+                zeros = rep(0, length(proportions));
+                lines = c(
+                    "// " + name,
+                    "p" + id + ".setMigrationRates(c(" + paste(anc_id, sep=", ") +
+                        "), c(" + paste(zeros, sep=", ") + "));"
+                );
+                sb_add(script_blocks, lines, start_time, type="late");
+
+            }
+        }
+
+        i = 0;
+        for (epoch in epochs) {
+            end_time = asFloat(epoch.getValue("end_time"));
+            if (isInfinite(start_time)) {
+                // already accounted for
+                start_time = end_time;
+                i = i + 1;
+                next;
+            }
+            size_function = epoch.getValue("size_function");
+            start_size = iround(epoch.getValue("start_size") / scaling_factor);
+            if (size_function == "constant") {
+                if (i > 0) {
+                    prev_size = iround(epochs[i-1].getValue("end_size") / scaling_factor);
+                    if (start_size != prev_size) {
+                        lines = c(
+                            "// " + name + ": previous N=" + start_size,
+                            "p" + id + ".setSubpopulationSize(" + start_size + ");"
+                        );
+                        sb_add(script_blocks, lines, start_time);
+                    }
+                }
+            } else if (size_function == "exponential") {
+                end_size = iround(epoch.getValue("end_size") / scaling_factor);
+                lines = c(
+                    "// " + name + ": exponential "
+                        + ifelse(start_size < end_size, "growth", "decline"),
+                    "start_size = " + start_size + ";",
+                    "end_size = " + end_size + ";",
+                    "r = log(end_size / start_size);",
+                    "gx = (sim.generation - self.start) / (self.end - self.start);",
+                    "size = iround(start_size * exp(r * gx));",
+                    "p" + id + ".setSubpopulationSize(size);"
+                );
+                sb_add(script_blocks, lines, start_time, end_time);
+            } else {
+                stop("unexpected size_function: " + size_function);
+            }
+
+            selfing_rate = epoch.getValue("selfing_rate");
+            cloning_rate = epoch.getValue("cloning_rate");
+            if (i == 0) {
+                do_selfing = (selfing_rate > 0);
+                do_cloning = (cloning_rate > 0);
+            } else {
+                do_selfing = selfing_rate != epochs[i-1].getValue("selfing_rate");
+                do_cloning = cloning_rate != epochs[i-1].getValue("cloning_rate");
+            }
+            if (do_selfing) {
+                lines = c("p" + id + ".setSelfingRate(" + selfing_rate + ");");
+                sb_add(script_blocks, lines, start_time);
+            }
+            if (do_cloning) {
+                lines = c("p" + id + ".setCloningRate(" + cloning_rate + ");");
+                sb_add(script_blocks, lines, start_time);
+            }
+
+            start_time = end_time;
+            i = i + 1;
+        }
+    }
+
+    migrations = data.getValue("migrations");
+    if (length(migrations) > 0) {
+        for (migration in migrations) {
+            start_time = asFloat(migration.getValue("start_time"));
+            end_time = migration.getValue("end_time");
+            source = migration.getValue("source");
+            dest = migration.getValue("dest");
+            source_id = deme_id.getValue(source);
+            dest_id = deme_id.getValue(dest);
+            rate = scaling_factor * migration.getValue("rate");
+            if (!isInfinite(start_time)) {
+                lines = c(
+                    "// " + source + " -> " + dest,
+                    "p" + dest_id + ".setMigrationRates("+source_id+", "+rate+");"
+                );
+                sb_add(script_blocks, lines, start_time);
+            }
+            if (end_time != 0) {
+                lines = c(
+                    "// " + source + " -| " + dest,
+                    "p" + dest_id + ".setMigrationRates("+source_id+", 0);"
+                );
+                sb_add(script_blocks, lines, end_time);
+            }
+        }
+    }
+
+    pulses = data.getValue("pulses");
+    if (length(pulses) > 0) {
+        for (pulse in pulses) {
+            source = pulse.getValue("source");
+            dest = pulse.getValue("dest");
+            source_id = deme_id.getValue(source);
+            dest_id = deme_id.getValue(dest);
+            time = pulse.getValue("time");
+            proportion = pulse.getValue("proportion");
+
+            lines = c(
+                "// " + source + " -> " + dest,
+                "p" + dest_id + ".setMigrationRates("+source_id+", "+proportion+");"
+            );
+            sb_add(script_blocks, lines, time, type="early");
+
+            lines = c(
+                "// " + source + " -| " + dest,
+                "p" + dest_id + ".setMigrationRates("+source_id+", 0);"
+            );
+            sb_add(script_blocks, lines, time, type="late");
+        }
+    }
+
+    for (deme in data.getValue("demes")) {
+        name = deme.getValue("name");
+        id = deme_id.getValue(name);
+        epochs = deme.getValue("epochs");
+        end_time = epochs[length(epochs)-1].getValue("end_time");
+        if (end_time > 0) {
+            lines = c(
+                "// " + name + ": extinction",
+                "p" + id + ".setSubpopulationSize(0);"
+            );
+            sb_add(script_blocks, lines, end_time, type="late");
+        }
+    }
+
+    t_end = register_scriptblocks(data, script_blocks, scaling_factor, burn_in);
+    return t_end;
+}
+
+/*
+  Check that required fields are present, and fix infinities.
+
+  We could check more, but for now this assumes the input JSON file has
+  been converted from YAML, and that the converter is conformant with
+  the Demes spec. This function catchs the most common problem: that the input
+  JSON file is a simplfied model, and not a fully-resolved model.
+
+  JSON doesn't support infinite values, so our JSON files encode infinity as
+  the string "Infinity". Infinite values are permitted for the "start_time"
+  field of a deme, and the "start_time" field of a migration.
+  Here, we convert such values to float INF values.
+*/
+function (void)validate(object<Dictionary>$ data) {
+    time_units = data.getValue("time_units");
+    if (isNULL(time_units)) {
+        stop("model has no time_units");
+    }
+    if (time_units != "generations") {
+        stop("time_units are not in generations");
+    }
+    demes = data.getValue("demes");
+    if (isNULL(demes) | length(demes) == 0) {
+        stop("demes dictionary has no demes");
+    }
+    i = 0;
+    for (deme in demes) {
+        name = deme.getValue("name");
+        if (isNULL(name)) {
+            stop("deme " + i + " has no name");
+        }
+        start_time = deme.getValue("start_time");
+        if (isNULL(start_time)) {
+            stop("deme " + name + " has no start_time");
+        }
+        epochs = deme.getValue("epochs");
+        if (isNULL(epochs) | length(epochs) == 0) {
+            stop("deme " + name + " has no epochs");
+        }
+
+        j = 0;
+        for (epoch in epochs) {
+            for (key in c("end_time", "start_size", "end_size", "size_function",
+                          "selfing_rate", "cloning_rate")) {
+                if (isNULL(epoch.getValue(key))) {
+                    stop("deme " + name + ", epoch " + j + " has no " + key);
+                }
+            }
+            j = j + 1;
+        }
+
+        // Fix infinity.
+        if (start_time == "Infinity") {
+            deme.setValue("start_time", INF);
+        }
+        i = i + 1;
+    }
+
+    migrations = data.getValue("migrations");
+    if (!isNULL(migrations)) {
+        i = 0;
+        for (migration in migrations) {
+            for (key in c("start_time", "end_time", "source", "dest", "rate")) {
+                if (isNULL(migration.getValue(key))) {
+                    stop("migration " + i + " has no " + key);
+                }
+            }
+
+            // Fix infinity.
+            if (migration.getValue("start_time") == "Infinity") {
+                migration.setValue("start_time", INF);
+            }
+        }
+        i = i + 1;
+    }
+
+    pulses = data.getValue("pulses");
+    if (!isNULL(pulses)) {
+        i = 0;
+        for (pulse in pulses) {
+            for (key in c("time", "source", "dest", "proportion")) {
+                if (isNULL(pulse.getValue(key))) {
+                    stop("pulse " + i + " has no " + key);
+                }
+            }
+            i = i + 1;
+        }
+    }
+}
+
+/*
+  Parse a fully-resolved JSON-format Demes model from a file.
+*/
+function (object<Dictionary>$)parse_demes(string$ json_file) {
+    model_string = paste(readFile(json_file), sep="\n");
+    if (isNULL(model_string)) {
+        stop();
+    }
+    data = Dictionary(model_string);
+    validate(data);
+    return data;
+}

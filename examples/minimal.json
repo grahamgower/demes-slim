@@ -1,0 +1,19 @@
+{
+    "time_units": "generations",
+    "demes": [
+        {
+            "name": "a",
+            "start_time": "Infinity",
+            "epochs": [
+                {
+                    "end_time": 0,
+                    "start_size": 100,
+                    "end_size": 100,
+                    "size_function": "constant",
+                    "selfing_rate": 0,
+                    "cloning_rate": 0
+                }
+            ]
+        }
+    ]
+}

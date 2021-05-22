@@ -1,0 +1,212 @@
+{
+    "description": "The Browning et al. (2011) model of admixture in the Americas.",
+    "time_units": "generations",
+    "doi": [
+        "https://doi.org/10.1371/journal.pgen.1007385"
+    ],
+    "demes": [
+        {
+            "name": "ancestral",
+            "description": "Equilibrium/root population",
+            "start_time": "Infinity",
+            "epochs": [
+                {
+                    "end_time": 5920,
+                    "start_size": 7310,
+                    "end_size": 7310,
+                    "size_function": "constant",
+                    "selfing_rate": 0,
+                    "cloning_rate": 0
+                }
+            ]
+        },
+        {
+            "name": "AMH",
+            "description": "Anatomically modern humans",
+            "start_time": 5920,
+            "ancestors": [
+                "ancestral"
+            ],
+            "proportions": [
+                1.0
+            ],
+            "epochs": [
+                {
+                    "end_time": 2040,
+                    "start_size": 14474,
+                    "end_size": 14474,
+                    "size_function": "constant",
+                    "selfing_rate": 0,
+                    "cloning_rate": 0
+                }
+            ]
+        },
+        {
+            "name": "OOA",
+            "description": "Bottleneck out-of-Africa population",
+            "start_time": 2040,
+            "ancestors": [
+                "AMH"
+            ],
+            "proportions": [
+                1.0
+            ],
+            "epochs": [
+                {
+                    "end_time": 920,
+                    "start_size": 1861,
+                    "end_size": 1861,
+                    "size_function": "constant",
+                    "selfing_rate": 0,
+                    "cloning_rate": 0
+                }
+            ]
+        },
+        {
+            "name": "AFR",
+            "description": "African population",
+            "start_time": 2040,
+            "ancestors": [
+                "AMH"
+            ],
+            "proportions": [
+                1.0
+            ],
+            "epochs": [
+                {
+                    "end_time": 0,
+                    "start_size": 14474,
+                    "end_size": 14474,
+                    "size_function": "constant",
+                    "selfing_rate": 0,
+                    "cloning_rate": 0
+                }
+            ]
+        },
+        {
+            "name": "EUR",
+            "description": "European population",
+            "start_time": 920,
+            "ancestors": [
+                "OOA"
+            ],
+            "proportions": [
+                1.0
+            ],
+            "epochs": [
+                {
+                    "end_time": 0,
+                    "start_size": 1000,
+                    "end_size": 34039,
+                    "size_function": "exponential",
+                    "selfing_rate": 0,
+                    "cloning_rate": 0
+                }
+            ]
+        },
+        {
+            "name": "EAS",
+            "description": "East Asian population",
+            "start_time": 920,
+            "ancestors": [
+                "OOA"
+            ],
+            "proportions": [
+                1.0
+            ],
+            "epochs": [
+                {
+                    "end_time": 0,
+                    "start_size": 510,
+                    "end_size": 45852,
+                    "size_function": "exponential",
+                    "selfing_rate": 0,
+                    "cloning_rate": 0
+                }
+            ]
+        },
+        {
+            "name": "ADMIX",
+            "description": "Admixed America",
+            "start_time": 12,
+            "ancestors": [
+                "AFR",
+                "EUR",
+                "EAS"
+            ],
+            "proportions": [
+                0.167,
+                0.333,
+                0.5
+            ],
+            "epochs": [
+                {
+                    "end_time": 0,
+                    "start_size": 30000,
+                    "end_size": 54664,
+                    "size_function": "exponential",
+                    "selfing_rate": 0,
+                    "cloning_rate": 0
+                }
+            ]
+        }
+    ],
+    "migrations": [
+        {
+            "source": "AFR",
+            "dest": "OOA",
+            "start_time": 2040,
+            "end_time": 920,
+            "rate": 0.00015
+        },
+        {
+            "source": "OOA",
+            "dest": "AFR",
+            "start_time": 2040,
+            "end_time": 920,
+            "rate": 0.00015
+        },
+        {
+            "source": "AFR",
+            "dest": "EUR",
+            "start_time": 920,
+            "end_time": 0,
+            "rate": 2.5e-05
+        },
+        {
+            "source": "EUR",
+            "dest": "AFR",
+            "start_time": 920,
+            "end_time": 0,
+            "rate": 2.5e-05
+        },
+        {
+            "source": "AFR",
+            "dest": "EAS",
+            "start_time": 920,
+            "end_time": 0,
+            "rate": 7.8e-06
+        },
+        {
+            "source": "EAS",
+            "dest": "AFR",
+            "start_time": 920,
+            "end_time": 0,
+            "rate": 7.8e-06
+        },
+        {
+            "source": "EUR",
+            "dest": "EAS",
+            "start_time": 920,
+            "end_time": 0,
+            "rate": 3.11e-05
+        },
+        {
+            "source": "EAS",
+            "dest": "EUR",
+            "start_time": 920,
+            "end_time": 0,
+            "rate": 3.11e-05
+        }
+    ]
+}

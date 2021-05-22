@@ -1,0 +1,41 @@
+initialize() {
+    if (!exists("model")) {
+        stop("must specify model file");
+    }
+    defineConstant("verbosity", 1);
+    defineConstant("dry_run", 0);
+    defineConstant("Q", 10.0); // scaling factor
+    defineConstant("mutation_rate", 0);
+    defineConstant("recombination_rate", 0);
+    defineConstant("contig_length", 100);
+    defineConstant("trees_file", "/tmp/slim_out.trees");
+    initializeTreeSeq();
+    initializeMutationRate(Q * mutation_rate);
+    initializeMutationType("m1", 0.5, "f", 0.0);
+    initializeGenomicElementType("g1", m1, 1.0);
+    initializeGenomicElement(g1, 0, contig_length - 1);
+    initializeRecombinationRate((1-(1-2*recombination_rate)^Q)/2);
+
+    source("demes.slim");
+}
+
+1 {
+    data = parse_demes(model);
+    t_end = schedule_events(data, scaling_factor=Q, burn_in=1.0);
+    sim.rescheduleScriptBlock(s1, t_end, t_end);
+
+    if (dry_run) {
+        for (sb in sim.scriptBlocks) {
+            if (sb.type != "initialize" & sb != self) { 
+                print_scriptblock(sb);
+            }
+        }
+        sim.simulationFinished();
+    }
+}
+
+// Output the tree sequence file at the end of the simulation.
+s1 late() {
+    dbg(self);  // Print the current script block as it's executed.
+    sim.treeSeqOutput(trees_file);
+}

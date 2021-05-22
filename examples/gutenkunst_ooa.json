@@ -1,0 +1,187 @@
+{
+    "description": "The Gutenkunst et al. (2009) OOA model.",
+    "time_units": "generations",
+    "doi": [
+        "https://doi.org/10.1371/journal.pgen.1000695"
+    ],
+    "demes": [
+        {
+            "name": "ancestral",
+            "description": "Equilibrium/root population",
+            "start_time": "Infinity",
+            "epochs": [
+                {
+                    "end_time": 8800.0,
+                    "start_size": 7300,
+                    "end_size": 7300,
+                    "size_function": "constant",
+                    "selfing_rate": 0,
+                    "cloning_rate": 0
+                }
+            ]
+        },
+        {
+            "name": "AMH",
+            "description": "Anatomically modern humans",
+            "start_time": 8800.0,
+            "ancestors": [
+                "ancestral"
+            ],
+            "proportions": [
+                1.0
+            ],
+            "epochs": [
+                {
+                    "end_time": 5600.0,
+                    "start_size": 12300,
+                    "end_size": 12300,
+                    "size_function": "constant",
+                    "selfing_rate": 0,
+                    "cloning_rate": 0
+                }
+            ]
+        },
+        {
+            "name": "OOA",
+            "description": "Bottleneck out-of-Africa population",
+            "start_time": 5600.0,
+            "ancestors": [
+                "AMH"
+            ],
+            "proportions": [
+                1.0
+            ],
+            "epochs": [
+                {
+                    "end_time": 848.0,
+                    "start_size": 2100,
+                    "end_size": 2100,
+                    "size_function": "constant",
+                    "selfing_rate": 0,
+                    "cloning_rate": 0
+                }
+            ]
+        },
+        {
+            "name": "YRI",
+            "description": "Yoruba in Ibadan, Nigeria",
+            "start_time": 5600.0,
+            "ancestors": [
+                "AMH"
+            ],
+            "proportions": [
+                1.0
+            ],
+            "epochs": [
+                {
+                    "end_time": 0.0,
+                    "start_size": 12300,
+                    "end_size": 12300,
+                    "size_function": "constant",
+                    "selfing_rate": 0,
+                    "cloning_rate": 0
+                }
+            ]
+        },
+        {
+            "name": "CEU",
+            "description": "Utah Residents (CEPH) with Northern and Western European Ancestry",
+            "start_time": 848.0,
+            "ancestors": [
+                "OOA"
+            ],
+            "proportions": [
+                1.0
+            ],
+            "epochs": [
+                {
+                    "end_time": 0.0,
+                    "start_size": 1000,
+                    "end_size": 29725,
+                    "size_function": "exponential",
+                    "selfing_rate": 0,
+                    "cloning_rate": 0
+                }
+            ]
+        },
+        {
+            "name": "CHB",
+            "description": "Han Chinese in Beijing, China",
+            "start_time": 848.0,
+            "ancestors": [
+                "OOA"
+            ],
+            "proportions": [
+                1.0
+            ],
+            "epochs": [
+                {
+                    "end_time": 0.0,
+                    "start_size": 510,
+                    "end_size": 54090,
+                    "size_function": "exponential",
+                    "selfing_rate": 0,
+                    "cloning_rate": 0
+                }
+            ]
+        }
+    ],
+    "migrations": [
+        {
+            "source": "YRI",
+            "dest": "OOA",
+            "start_time": 5600.0,
+            "end_time": 848.0,
+            "rate": 0.00025
+        },
+        {
+            "source": "OOA",
+            "dest": "YRI",
+            "start_time": 5600.0,
+            "end_time": 848.0,
+            "rate": 0.00025
+        },
+        {
+            "source": "YRI",
+            "dest": "CEU",
+            "start_time": 848.0,
+            "end_time": 0.0,
+            "rate": 3e-05
+        },
+        {
+            "source": "CEU",
+            "dest": "YRI",
+            "start_time": 848.0,
+            "end_time": 0.0,
+            "rate": 3e-05
+        },
+        {
+            "source": "YRI",
+            "dest": "CHB",
+            "start_time": 848.0,
+            "end_time": 0.0,
+            "rate": 1.9e-05
+        },
+        {
+            "source": "CHB",
+            "dest": "YRI",
+            "start_time": 848.0,
+            "end_time": 0.0,
+            "rate": 1.9e-05
+        },
+        {
+            "source": "CEU",
+            "dest": "CHB",
+            "start_time": 848.0,
+            "end_time": 0.0,
+            "rate": 9.6e-05
+        },
+        {
+            "source": "CHB",
+            "dest": "CEU",
+            "start_time": 848.0,
+            "end_time": 0.0,
+            "rate": 9.6e-05
+        }
+    ]
+}
