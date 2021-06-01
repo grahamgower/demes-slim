@@ -104,6 +104,10 @@ function (void)sb_add(
 function (void)demes_schedule_events(object<Dictionary>$ model, [integer$ verbosity=1]) {
     script_blocks = Dictionary();
 
+    if (sim.modelType != "WF") {
+        stop("Sorry, non-Wright-Fisher models not yet supported. Patches welcome!");
+    }
+
     for (deme in model.getValue("demes")) {
         name = deme.getValue("name");
         id = get_deme_id(model, name);
