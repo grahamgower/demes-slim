@@ -1,8 +1,7 @@
 initialize() {
-    if (!exists("model")) {
-        stop("must specify model file");
+    if (!exists("json")) {
+        stop("must specify json file");
     }
-    defineConstant("verbosity", 1);
     defineConstant("dry_run", 0);
     defineConstant("Q", 10.0); // scaling factor
     defineConstant("mutation_rate", 0);
@@ -20,16 +19,18 @@ initialize() {
 }
 
 1 {
-    data = parse_demes(model);
-    t_end = schedule_events(data, scaling_factor=Q, burn_in=1.0);
-    sim.rescheduleScriptBlock(s1, t_end, t_end);
+    model = demes_load(json, scaling_factor=Q, burn_in=10.0);
+    demes_schedule_events(model);
+    g_end = model.getValue("end_time");
+    sim.rescheduleScriptBlock(s1, g_end, g_end);
 
     if (dry_run) {
-        for (sb in sim.scriptBlocks) {
+        for (sb in sortBy(sim.scriptBlocks, "start")) {
             if (sb.type != "initialize" & sb != self) { 
                 print_scriptblock(sb);
             }
         }
+        sim.scriptBlocks.active = F;
         sim.simulationFinished();
     }
 }

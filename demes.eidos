@@ -1,0 +1,388 @@
+// Return index of needle in haystack, or -1 if not found.
+function (integer$)strindex(string$ haystack, string$ needle) {
+    nlen = nchar(needle);
+    hlen = nchar(haystack);
+    if (nlen == 0 | hlen == 0 | hlen < nlen) {
+        return -1;
+    }
+    for (i in 0:(hlen-nlen)) {
+        if (needle == substr(haystack, i, i+nlen-1)) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+// Return true if haystack contains needle as a substring, false otherwise.
+function (logical$)contains(string$ haystack, string$ needle) {
+    return (strindex(haystack, needle) >= 0);
+}
+
+// Round num to the nearest integer and return as an integer.
+function (integer)iround(numeric num) {
+    return asInteger(round(asFloat(num)));
+}
+
+// Return the number of rows in the given "dataframe" dictionary.
+function (integer$)nrow_dict(object<Dictionary> d) {
+    if (length(d.allKeys) == 0) {
+        return 0;
+    } else {
+        return length(d.getValue(d.allKeys[0]));
+    }
+}
+
+function (void)to_generations(object<Dictionary>$ model) {
+    if (model.getValue("time_units") == "generations") {
+        return;
+    }
+    generation_time = model.getValue("generation_time");
+    if (isNULL(generation_time)) {
+        stop("generation_time is required when time_units!=generations");
+    }
+    for (deme in model.getValue("demes")) {
+        start_time = asFloat(deme.getValue("start_time"));
+        if (!isInfinite(start_time)) {
+            deme.setValue("start_time", start_time / generation_time);
+        }
+        for (epoch in deme.getValue("epochs")) {
+            epoch.setValue("end_time", epoch.getValue("end_time") / generation_time);
+        }
+    }
+    migrations = model.getValue("migrations");
+    if (length(migrations) > 0) {
+        for (migration in migrations) {
+            start_time = asFloat(migration.getValue("start_time"));
+            if (!isInfinite(start_time)) {
+                migration.setValue("start_time", start_time / generation_time);
+            }
+            migration.setValue("end_time", migration.getValue("end_time") / generation_time);
+        }
+    }
+    pulses = model.getValue("pulses");
+    if (length(pulses) > 0) {
+        for (pulse in pulses) {
+            pulse.setValue("time", pulse.getValue("time") / generation_time);
+        }
+    }
+
+    model.setValue("time_units", "generations");
+}
+
+/*
+  Check that the all the required keys are present in a dictionary.
+*/
+function (void)check_required(object<Dictionary>$ dict, string required_keys,
+                              [string$ msg_prefix = ""]) {
+    for (key in required_keys) {
+        if (isNULL(dict.getValue(key))) {
+            stop(msg_prefix + "required field '" + key + "' not found");
+        }
+    }
+}
+
+/*
+  Check that required fields are present.
+
+  We could check more, but for now this assumes the input JSON file has
+  been converted from YAML, and that the converter is conformant with
+  the Demes spec. This function catchs the most common problem: that the input
+  JSON file is a simplfied model, and not a fully-resolved model.
+*/
+function (void)validate(object<Dictionary>$ model) {
+    check_required(model, c("time_units", "demes"));
+    demes = model.getValue("demes");
+    if (length(demes) == 0) {
+        stop("Demes model must have one or more demes");
+    }
+    i = 0;
+    for (deme in demes) {
+        check_required(deme, c("name", "start_time", "epochs"), "demes["+i+"]: ");
+        name = deme.getValue("name");
+        epochs = deme.getValue("epochs");
+        if (length(epochs) == 0) {
+            stop("demes["+i+"] "+name+": must have one or more epochs");
+        }
+
+        j = 0;
+        for (epoch in epochs) {
+            check_required(epoch,
+                           c("end_time", "start_size", "end_size",
+                             "size_function", "selfing_rate", "cloning_rate"),
+                           "demes["+i+"] "+name+": epochs["+j+"]: ");
+            j = j + 1;
+        }
+
+        i = i + 1;
+    }
+
+    migrations = model.getValue("migrations");
+    if (length(migrations) > 0) {
+        i = 0;
+        for (migration in migrations) {
+            check_required(migration,
+                           c("start_time", "end_time", "source", "dest", "rate"),
+                           "migrations["+i+"]: ");
+            i = i + 1;
+        }
+    }
+
+    pulses = model.getValue("pulses");
+    if (length(pulses) > 0) {
+        i = 0;
+        for (pulse in pulses) {
+            check_required(pulse, c("time", "source", "dest", "proportion"),
+                           "pulses["+i+"]: ");
+            i = i + 1;
+        }
+    }
+}
+
+// Return the earliest finite time, and latest time in the model.
+function (float)event_time_bounds(object<Dictionary>$ model) {
+    t_max = 0.0;
+    t_min = INF;
+
+    for (deme in model.getValue("demes")) {
+        start_time = asFloat(deme.getValue("start_time"));
+        if (!isInfinite(start_time)) {
+            t_max = max(t_max, start_time);
+        }
+        for (epoch in deme.getValue("epochs")) {
+            end_time = asFloat(epoch.getValue("end_time"));
+            t_max = max(t_max, end_time);
+            t_min = min(t_min, end_time);
+        }
+    }
+
+    migrations = model.getValue("migrations");
+    if (length(migrations) > 0) {
+        for (migration in migrations) {
+            start_time = asFloat(migration.getValue("start_time"));
+            if (!isInfinite(start_time)) {
+                t_max = max(t_max, start_time);
+            }
+            end_time = asFloat(migration.getValue("end_time"));
+            t_max = max(t_max, end_time);
+            t_min = min(t_min, end_time);
+        }
+    }
+
+    pulses = model.getValue("pulses");
+    if (length(pulses) > 0) {
+        for (pulse in pulses) {
+            time = asFloat(pulse.getValue("time"));
+            t_max = max(t_max, time);
+            t_min = min(t_min, time);
+        }
+    }
+
+    assert(t_max > t_min | (t_max == 0 & t_min == 0));
+    return c(t_max, t_min);
+}
+
+// Return the sum of the sizes of root demes.
+function (integer$)N_root(object<Dictionary>$ model) {
+    N_root = 0.0;
+    for (deme in model.getValue("demes")) {
+        start_time = asFloat(deme.getValue("start_time"));
+        if (isInfinite(start_time)) {
+            first_epoch = deme.getValue("epochs")[0];
+            N_root = N_root + first_epoch.getValue("start_size");
+        }
+    }
+    return asInteger(round(N_root));
+}
+
+/*
+  Convert the Demes model to have SLiM-compatible times and deme sizes.
+  Deme sizes are divided by two (to count diploid individuals), divided by
+  the scaling_factor, and converted to an integer.
+  Times in the Demes model are in units of generations ago, which we translate
+  into integer SLiM generations relative to the end of the burn in period.
+
+  JSON doesn't support infinite values, so our JSON files encode infinity as
+  the string "Infinity". Infinite values are permitted for the "start_time"
+  field of a deme, and the "start_time" field of a migration.
+  The string "Infinity is coverted to a float INF by the asFloat() function.
+*/
+function (integer$)to_slim_units(
+    object<Dictionary>$ model, float$ scaling_factor, float$ burn_in
+) {
+    if (scaling_factor < 1.0) {
+        stop("must have scaling_factor >= 1.0");
+    }
+    if (burn_in < 0.0) {
+        stop("must have burn_in >= 0.0");
+    }
+
+    g_init = 1; // initial generation
+    g_burn_end = g_init + max(1, iround(N_root(model) * burn_in / scaling_factor));
+    // The first event in the model (t_max) happens at g_burn_end.
+    bounds = event_time_bounds(model);
+    t_max = iround(bounds[0] / scaling_factor);
+    t_min = iround(bounds[1] / scaling_factor);
+
+
+    for (deme in model.getValue("demes")) {
+        start_time = asFloat(deme.getValue("start_time"));
+        if (isInfinite(start_time)) {
+            start_time = g_init;
+        } else {
+            start_time = g_burn_end + t_max - iround(start_time / scaling_factor);
+        }
+        deme.setValue("start_time", start_time);
+
+        j = 0;
+        for (epoch in deme.getValue("epochs")) {
+            end_time = epoch.getValue("end_time");
+            end_time = g_burn_end + t_max - iround(end_time / scaling_factor);
+            epoch.setValue("end_time", end_time);
+
+            start_size = epoch.getValue("start_size");
+            start_size = iround(start_size / 2 / scaling_factor);
+            epoch.setValue("start_size", start_size);
+
+            end_size = epoch.getValue("end_size");
+            end_size = iround(end_size / 2 / scaling_factor);
+            epoch.setValue("end_size", end_size);
+
+            epoch.setValue("selfing_rate", asFloat(epoch.getValue("selfing_rate")));
+            epoch.setValue("cloning_rate", asFloat(epoch.getValue("cloning_rate")));
+
+            if (start_size == 0 | end_size == 0) {
+                name = deme.getValue("name");
+                stop("deme "+name+" epoch "+j+": deme size is 0 due to scaling");
+            }
+            if (end_time <= start_time) {
+                name = deme.getValue("name");
+                stop("deme "+name+" epoch "+j+": time span is 0 due to scaling");
+            }
+            start_time = end_time;
+            j = j + 1;
+        }
+    }
+
+    migrations = model.getValue("migrations");
+    if (length(migrations) > 0) {
+        j = 0;
+        for (migration in migrations) {
+            start_time = asFloat(migration.getValue("start_time"));
+            if (isInfinite(start_time)) {
+                start_time = g_init;
+            } else {
+                start_time = g_burn_end + t_max - iround(start_time / scaling_factor);
+            }
+            migration.setValue("start_time", start_time);
+
+            end_time = migration.getValue("end_time");
+            end_time = g_burn_end + t_max - iround(end_time / scaling_factor);
+            migration.setValue("end_time", end_time);
+
+            rate = migration.getValue("rate");
+            rate = rate * scaling_factor;
+            migration.setValue("rate", rate);
+
+            if (end_time <= start_time) {
+                stop("migration "+j+": time span is 0 due to scaling");
+            }
+            if (rate > 1) {
+                stop("migration "+j+": rate > 1 due to scaling");
+            }
+            // TODO: Check that migration rates into dest deme don't total > 1
+            //       in any generation (due to scaling).
+            j = j + 1;
+        }
+    }
+
+    pulses = model.getValue("pulses");
+    if (length(pulses) > 0) {
+        for (pulse in pulses) {
+            time = pulse.getValue("time");
+            time = g_burn_end + t_max - iround(time / scaling_factor);
+            pulse.setValue("time", time);
+
+            // TODO: Check that the scaled pulse time makes sense w.r.t. the 
+            //       scaled source and dest start/end times.
+        }
+    }
+
+    g_end = g_burn_end + t_max - t_min;
+    return g_end;
+}
+
+
+/*
+  Convert the model to discrete sizes and times, and add some useful fields.
+*/
+function (void)canonicalise(object<Dictionary>$ model, float$ scaling_factor, float$ burn_in) {
+    to_generations(model);
+    g_end = to_slim_units(model, scaling_factor, burn_in);
+    model.setValue("end_time", g_end);
+
+    for (deme in model.getValue("demes")) {
+        start_time = deme.getValue("start_time");
+        for (epoch in deme.getValue("epochs")) {
+            epoch.setValue("start_time", start_time);
+            end_time = epoch.getValue("end_time");
+            start_time = end_time;
+        }
+        deme.setValue("end_time", end_time);
+    }
+
+}
+
+/*
+  Load a fully-resolved JSON-format Demes model from a file.
+
+  * Deme sizes are divided by two and rounded to integers, to have units of
+    diploid individuals.
+  * Times are converted to integer SLiM generations, which count forwards from
+    the first generation (Demes models, time values increase towards the past).
+  * The model dict is given an "end_time" field, defined as the generation
+    in which the simulation should end (time=0 in most Demes models).
+    The simulation then spans the open-closed interval (INF, model.end_time],
+    where INF is approximated using a burn-in phase.
+  * Each deme dict is given an "end_time" field, defined as the generation
+    in which the deme goes extinct. Each deme then spans the open-closed
+    interval (deme.start_time, deme.end_time]. Thus, early() events referencing
+    the deme are valid for generations [deme.start_time + 1, deme.end_time].
+  * Each epoch dict is given a "start_time" field. Each epoch then spans the
+    open-closed interval (epoch.start_time, epoch.end_time].
+    Parents in the epoch.start_time generation have properties following the
+    previous (older) epoch (or their ancestor deme(s) if this is the first
+    epoch), and offspring generated in the epoch.start_time generation have
+    properties of the current epoch.
+*/
+function (object<Dictionary>$)demes_load(
+    string$ json_file, [numeric$ scaling_factor = 1.0], [numeric$ burn_in = 10.0]) {
+    model_lines = readFile(json_file);
+    if (isNULL(model_lines)) {
+        stop(json_file + ": failed to load model");
+    }
+    model_string = paste(model_lines, sep="\n");
+    model = Dictionary(model_string);
+    validate(model);
+    canonicalise(model, asFloat(scaling_factor), asFloat(burn_in));
+    return model;
+}
+
+/*
+  Return the integer deme ID for the named deme. This can be used as an
+  index into the sim.subpopulations vector.
+*/
+function (Ni$)get_deme_id(object<Dictionary>$ model, string$ deme_name) {
+    deme_id = model.getValue("_deme_id");
+    if (isNULL(deme_id)) {
+        // Assign a numerical ID for each deme.
+        deme_id = Dictionary();
+        i = 0;
+        for (deme in model.getValue("demes")) {
+            deme_id.setValue(deme.getValue("name"), i);
+            i = i + 1;
+        }
+        // Save the deme_id dict inside the model dict.
+        model.setValue("_deme_id", deme_id);
+    }
+    return deme_id.getValue(deme_name);
+}
