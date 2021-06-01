@@ -1,0 +1,99 @@
+source("../demes.eidos");
+source("utils.eidos");
+
+function (void)check_model_properties(object<Dictionary>$ model, string$ msg_pfx) {
+    assert(model.getValue("time_units") == "generations", msg_pfx);
+    end_time = model.getValue("end_time");
+    assert(type(end_time) == "integer", msg_pfx);
+    assert(end_time >= 1, msg_pfx);
+
+    for (deme in model.getValue("demes")) {
+        name = deme.getValue("name");
+        assert(!isNULL(get_deme_id(model, name)), msg_pfx + ": deme " + name);
+
+        for (k in deme.allKeys) {
+            v = deme.getValue(k);
+            if (k  == "start_time" | k == "end_time") {
+                msg = msg_pfx + ": deme " + name + ": key " + k + " = " + v;
+                assert(type(v) == "integer", msg);
+                assert(v >= 1, msg);
+            }
+        }
+
+        i = 0;
+        for (epoch in deme.getValue("epochs")) {
+            for (k in epoch.allKeys) {
+                v = epoch.getValue(k);
+                msg = msg_pfx + ": deme " + name + ": epoch " + i + ": " + k + " = " + v;
+
+                if (k == "start_time" | k == "end_time" | k == "start_size" | k == "end_size") {
+                    assert(type(v) == "integer", msg);
+                    assert(v >= 1, msg);
+                }
+                if (k == "selfing_rate" | k == "cloning_rate") {
+                    assert(type(v) == "float", msg);
+                    assert(v >= 0 & v <= 1, msg);
+                }
+                if (k == "size_function") {
+                    assert(v == "constant" | v == "exponential", msg);
+                }
+            }
+            i = i + 1;
+        }
+    }
+    migrations = model.getValue("migrations");
+    if (length(migrations) > 0) {
+        i = 0;
+        for (migration in migrations) {
+            for (k in migration.allKeys) {
+                v = migration.getValue(k);
+                msg = msg_pfx + ": migration" + i + ": " + k + " = " + v;
+
+                if (k == "start_time" | k == "end_time") {
+                    assert(type(v) == "integer", msg);
+                    assert(v >= 1, msg);
+                }
+
+                if (k == "rate") {
+                    assert(type(v) == "float", msg);
+                    assert(v >= 0 & v <= 1, msg);
+                }
+                if (k == "source" | k ==  "dest") {
+                    assert(!isNULL(get_deme_id(model, v)), msg);
+                }
+            }
+            msg = msg_pfx + ": migration" + i;
+            assert(migration.getValue("start_time") < migration.getValue("end_time"), msg);
+            i = i + 1;
+        }
+    }
+    pulses = model.getValue("pulses");
+    if (length(pulses) > 0) {
+        i = 0;
+        for (pulse in pulses) {
+            for (k in pulse.allKeys) {
+                v = pulse.getValue(k);
+                msg = msg_pfx + ": pulse" + i + ": " + k + " = " + v;
+
+                if (k == "source" | k ==  "dest") {
+                    assert(!isNULL(get_deme_id(model, v)), msg);
+                }
+                if (k == "time") {
+                    assert(type(v) == "integer", msg);
+                    assert(v >= 1, msg);
+                }
+                if (k == "proportion") {
+                    assert(type(v) == "float", msg);
+                    assert(v >= 0 & v <= 1, msg);
+                }
+            }
+            i = i + 1;
+        }
+    }
+}
+
+
+for (file in example_json_files()) {
+    model = demes_load(file);
+    check_model_properties(model, file);
+}

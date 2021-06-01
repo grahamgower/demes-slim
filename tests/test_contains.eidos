@@ -1,0 +1,15 @@
+source("../demes.eidos");
+
+for (teststr in c("foobar", "something else", "1234")) {
+    assert(contains(teststr, teststr));
+    for (i in 1:(nchar(teststr)-1)) {
+        assert(contains(teststr, substr(teststr, i)));
+        assert(contains(teststr, substr(teststr, i, i)));
+        assert(!contains(substr(teststr, i), teststr));
+        assert(!contains(substr(teststr, i, i), teststr));
+    }
+}
+assert(!contains("foobar", "zip"));
+assert(!contains("foobar", "zfoo"));
+assert(!contains("foobar", "barf"));
+assert(!contains("foobar", "foobarf"));

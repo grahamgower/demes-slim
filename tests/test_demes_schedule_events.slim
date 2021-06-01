@@ -1,0 +1,41 @@
+initialize() {
+    if (!exists("json")) {
+        stop("must specify json file");
+    }
+    if (exists("Q")) {
+        defineGlobal("scaling_factor", Q);
+    } else {
+        defineGlobal("scaling_factor", 1.0);
+    } 
+    initializeMutationRate(0);
+    initializeMutationType("m1", 0.5, "f", 0.0);
+    initializeGenomicElementType("g1", m1, 1.0);
+    initializeGenomicElement(g1, 0, 99);
+    initializeRecombinationRate(0);
+    source("../demes.slim", chdir=T);
+}
+
+1 {
+    model = demes_load(json, scaling_factor=scaling_factor, burn_in=0.1);
+    demes_schedule_events(model, verbosity=0);
+    end_time = model.getValue("end_time");
+    sim.registerLateEvent(NULL, "{sim.simulationFinished();}", end_time, end_time);
+}
+
+1: late() {
+    for (p in sim.subpopulations) {
+        ancestor_id = p.getValue("ancestor_id");
+        if (isNULL(ancestor_id)) {
+            ancestor_id = -1;
+        }
+        catn(c("#state",
+               sim.generation,
+               p.id,
+               ancestor_id,
+               length(p.genomes),
+               p.selfingRate,
+               p.cloningRate,
+               p.immigrantSubpopIDs,
+               p.immigrantSubpopFractions));
+    }
+}

@@ -1,0 +1,25 @@
+source("../demes.eidos");
+source("utils.eidos");
+
+function (void)test_get_deme_id(object<Dictionary>$ model, string$ msg_pfx) {
+    i = 0;
+    for (deme in model.getValue("demes")) {
+        name = deme.getValue("name");
+        assert(get_deme_id(model, name) == i, msg_pfx + ": deme " + name);
+        // check some similar names that shouldn't be found
+        assert(isNULL(get_deme_id(model, "__" + name)), msg_pfx);
+        assert(isNULL(get_deme_id(model, name + "__")), msg_pfx);
+        i = i + 1;
+    }
+
+    // these (invalid) deme names should not be in any model
+    assert(isNULL(get_deme_id(model, "A B")), msg_pfx);
+    assert(isNULL(get_deme_id(model, "A-B")), msg_pfx);
+    assert(isNULL(get_deme_id(model, "1")), msg_pfx);
+    assert(isNULL(get_deme_id(model, "")), msg_pfx);
+}
+
+for (file in example_json_files()) {
+    model = demes_load(file);
+    test_get_deme_id(model, file);
+}
