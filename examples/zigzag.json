@@ -1,6 +1,7 @@
 {
     "description": "A single population model with epochs of exponential growth and decay.",
     "time_units": "generations",
+    "generation_time": 30,
     "doi": [
         "https://doi.org/10.1038/ng.3015"
     ],

@@ -4,10 +4,9 @@
 for yaml in *.yaml; do
     python -c \
         "import sys, demes; \
-        demes.dump(demes.load(sys.argv[1]).in_generations(), \
-                   sys.stdout, format='json', simplified=False)" \
+        demes.dump(demes.load(sys.argv[1]), sys.stdout, format='json', simplified=False)" \
         $yaml \
         | python -m json.tool \
-        | sed 's/Infinity/"Infinity"/' \
+        | perl -pe 's/\bInfinity\b/"Infinity"/g' \
         > ${yaml%%.yaml}.json
 done

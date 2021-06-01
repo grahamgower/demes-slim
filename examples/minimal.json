@@ -7,8 +7,8 @@
             "epochs": [
                 {
                     "end_time": 0,
-                    "start_size": 100,
-                    "end_size": 100,
+                    "start_size": 500,
+                    "end_size": 500,
                     "size_function": "constant",
                     "selfing_rate": 0,
                     "cloning_rate": 0
