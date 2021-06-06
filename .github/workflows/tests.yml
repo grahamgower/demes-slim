@@ -1,0 +1,62 @@
+name: tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  canceller:
+    runs-on: ubuntu-18.04
+    steps:
+      - name: cancel previous runs
+        uses: styfle/cancel-workflow-action@0.9.0
+        with:
+          access_token: ${{ github.token }}
+
+  tests:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-18.04, macos-10.15]
+        slim_version: [720d0fd79e26b53dd02195035084a0cafab5f619]
+
+    steps:
+      - name: checkout deme-slim
+        uses: actions/checkout@v2
+
+      - name: checkout SLiM
+        uses: actions/checkout@v2
+        with:
+          repository: MesserLab/SLiM
+          fetch-depth: 0
+          ref: ${{ matrix.slim_version }}
+          path: SLiM
+
+      - name: build SLiM
+        run: |
+          cd SLiM
+          mkdir Release
+          cd Release
+          cmake -D CMAKE_BUILD_TYPE=Release ..
+          make -j 2
+          ./eidos -testEidos
+          ./slim -testEidos
+          ./slim -testSLiM
+
+      - name: setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: install Python dependencies
+        run: |
+          pip install pytest demes
+
+      - name: run tests
+        run: |
+          cd tests
+          export PATH=../SLiM/Release:$PATH
+          sh tests.sh
