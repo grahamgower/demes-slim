@@ -1,22 +1,10 @@
 /*
-  Return true if the string "s" ends with "suffix", false otherwise.
-*/
-function (logical$)endswith(string$ text, string$ suffix) {
-    tlen = nchar(text);
-    sfxlen = nchar(suffix);
-    if (tlen < sfxlen) {
-        return F;
-    }
-    return (substr(text, tlen-sfxlen) == suffix);
-}
-
-/*
   Return a list of paths for the example json files.
 */
 function (string)example_json_files(void) {
     files = c();
     for (file in filesAtPath("../examples", fullPaths=T)) {
-        if (endswith(file, ".json")) {
+        if (strsuffix(file, ".json")) {
             files = c(files, file);
         }
     }

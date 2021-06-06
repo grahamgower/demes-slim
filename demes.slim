@@ -9,7 +9,7 @@ function (void)print_scriptblock(object<SLiMEidosBlock>$ sb) {
     // Remove source lines containing "dbg(self)" before printing.
     source = sb.source;
     lines = strsplit(source, "\n");
-    dbg_lines = sapply(lines, '{return contains(applyValue, "dbg(self)");}');
+    dbg_lines = strcontains(lines, "dbg(self)");
     lines = lines[which(!dbg_lines)];
     source = paste(lines, sep="\n");
 

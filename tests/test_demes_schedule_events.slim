@@ -1,11 +1,9 @@
 initialize() {
-    if (!exists("json")) {
+    if (!exists("JSON_FILE")) {
         stop("must specify json file");
     }
-    if (exists("Q")) {
-        defineGlobal("scaling_factor", Q);
-    } else {
-        defineGlobal("scaling_factor", 1.0);
+    if (!exists("SCALING_FACTOR")) {
+        defineConstant("SCALING_FACTOR", 1.0);
     } 
     initializeMutationRate(0);
     initializeMutationType("m1", 0.5, "f", 0.0);
@@ -16,7 +14,7 @@ initialize() {
 }
 
 1 {
-    model = demes_load(json, scaling_factor=scaling_factor, burn_in=0.1);
+    model = demes_load(JSON_FILE, scaling_factor=SCALING_FACTOR, burn_in=0.1);
     demes_schedule_events(model, verbosity=0);
     end_time = model.getValue("end_time");
     sim.registerLateEvent(NULL, "{sim.simulationFinished();}", end_time, end_time);

@@ -1,30 +1,33 @@
 initialize() {
-    if (!exists("json")) {
-        stop("must specify json file");
+    if (!exists("JSON_FILE")) {
+        stop("must define JSON_FILE");
     }
-    defineConstant("dry_run", 0);
-    defineConstant("Q", 10.0); // scaling factor
-    defineConstant("mutation_rate", 0);
-    defineConstant("recombination_rate", 0);
-    defineConstant("contig_length", 100);
-    defineConstant("trees_file", "/tmp/slim_out.trees");
+    if (!exists("DRY_RUN")) {
+        defineConstant("DRY_RUN", 0);
+    }
+    defineConstant("SCALING_FACTOR", 10.0);
+    defineConstant("MUTATION_RATE", 0);
+    defineConstant("RECOMBINATION_RATE", 0);
+    defineConstant("CONTIG_LENGTH", 100);
+    defineConstant("TREES_FILE", "/tmp/slim_out.trees");
     initializeTreeSeq();
-    initializeMutationRate(Q * mutation_rate);
+    initializeMutationRate(SCALING_FACTOR * MUTATION_RATE);
     initializeMutationType("m1", 0.5, "f", 0.0);
     initializeGenomicElementType("g1", m1, 1.0);
-    initializeGenomicElement(g1, 0, contig_length - 1);
-    initializeRecombinationRate((1-(1-2*recombination_rate)^Q)/2);
+    initializeGenomicElement(g1, 0, CONTIG_LENGTH - 1);
+    initializeRecombinationRate((1 - (1 - 2 * RECOMBINATION_RATE)^SCALING_FACTOR) / 2);
 
     source("demes.slim");
 }
 
 1 {
-    model = demes_load(json, scaling_factor=Q, burn_in=10.0);
+    model = demes_load(JSON_FILE, scaling_factor=SCALING_FACTOR, burn_in=10.0);
     demes_schedule_events(model);
     g_end = model.getValue("end_time");
     sim.rescheduleScriptBlock(s1, g_end, g_end);
 
-    if (dry_run) {
+    if (DRY_RUN) {
+        // Just print out the script blocks that are scheduled and then exit.
         for (sb in sortBy(sim.scriptBlocks, "start")) {
             if (sb.type != "initialize" & sb != self) { 
                 print_scriptblock(sb);
@@ -38,5 +41,5 @@ initialize() {
 // Output the tree sequence file at the end of the simulation.
 s1 late() {
     dbg(self);  // Print the current script block as it's executed.
-    sim.treeSeqOutput(trees_file);
+    sim.treeSeqOutput(TREES_FILE);
 }

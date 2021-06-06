@@ -24,7 +24,7 @@ A complete example is provided in the `initialize.slim` file,
 which can be used from the command line as follows.
 
 ```
-$ slim -d json=\"examples/browning_america.json\" initialize.slim
+$ slim -d JSON_FILE=\"examples/browning_america.json\" initialize.slim
 ```
 
 ## API
