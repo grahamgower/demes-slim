@@ -53,7 +53,7 @@ jobs:
 
       - name: install Python dependencies
         run: |
-          pip install pytest demes
+          pip install -r tests/requirements.txt
 
       - name: run tests
         run: |
