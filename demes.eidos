@@ -220,11 +220,11 @@ function (integer$)to_slim_units(
             epoch.setValue("end_time", end_time);
 
             start_size = epoch.getValue("start_size");
-            start_size = iround(start_size / 2 / scaling_factor);
+            start_size = iround(start_size / scaling_factor);
             epoch.setValue("start_size", start_size);
 
             end_size = epoch.getValue("end_size");
-            end_size = iround(end_size / 2 / scaling_factor);
+            end_size = iround(end_size / scaling_factor);
             epoch.setValue("end_size", end_size);
 
             epoch.setValue("selfing_rate", asFloat(epoch.getValue("selfing_rate")));
