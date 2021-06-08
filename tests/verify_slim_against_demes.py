@@ -181,38 +181,6 @@ def graph_to_scaled_discrete(graph: demes.Graph, scaling_factor=1.0) -> demes.Gr
     return b.resolve()
 
 
-# XXX: When demes exports a migration matrix function, use that instead.
-def migration_matrices(graph: demes.Graph):
-    """
-    Return a list of migration matrices, and a list of end times that
-    partition them. The start time for the first matrix is inf.
-    """
-    uniq_times = set(migration.start_time for migration in graph.migrations)
-    uniq_times.update(migration.end_time for migration in graph.migrations)
-    uniq_times.discard(math.inf)
-    end_times = sorted(uniq_times, reverse=True)
-    n = len(graph.demes)
-    mm_list = [[[0] * n for _ in range(n)] for _ in range(len(end_times))]
-    deme_id = {deme.name: j for j, deme in enumerate(graph.demes)}
-    for migration in graph.migrations:
-        start_time = math.inf
-        for k, end_time in enumerate(end_times):
-            if start_time <= migration.end_time:
-                break
-            if end_time < migration.start_time:
-                source_id = deme_id[migration.source]
-                dest_id = deme_id[migration.dest]
-                if mm_list[k][dest_id][source_id] > 0:
-                    raise ValueError(
-                        "multiple migrations defined for "
-                        f"source={migration.source}, dest={migration.dest} "
-                        f"between start_time={start_time}, end_time={end_time}"
-                    )
-                mm_list[k][dest_id][source_id] = migration.rate
-            start_time = end_time
-    return mm_list, end_times
-
-
 def check_states_against_graph(states, graph):
     gstates = group_states_by_pid(states)
     deme_names = [deme.name for deme in graph.demes]
@@ -281,7 +249,7 @@ def check_states_against_graph(states, graph):
 
     deme_id = {deme.name: j for j, deme in enumerate(graph.demes)}
 
-    mm_list, end_times = migration_matrices(graph)
+    mm_list, end_times = graph.migration_matrices()
     start_time = math.inf
     i = 0
     for migration_matrix, end_time in zip(mm_list, end_times):
