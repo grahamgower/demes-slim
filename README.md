@@ -8,6 +8,12 @@ demographic model into
 Note: a development version of SLiM is currently required (the minumum
 version will be SLiM v3.7, once that is released).
 
+# WARNING
+
+The Demes spec has evolved since this code was written and the behaviour
+of Demes-SLiM does not currently match the Demes spec. Please don't use
+this code just yet!
+
 # Usage
 
 The `demes.slim` and `demes.eidos` files contain SLiM/Eidos functions for
