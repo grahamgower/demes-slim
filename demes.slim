@@ -121,7 +121,7 @@ function (void)demes_schedule_events(object<Dictionary>$ model, [integer$ verbos
             lines = c(
                 "// " + name + ": conjured from the void",
                 "sim.addSubpop(" + id + ", " + start_size + ");",
-                "p"+id+".setValue(\"name\", \""+name+"\");"
+                "p"+id+".name = \""+name+"\";"
             );
             if (selfing_rate > 0) {
                 lines = c(lines, "p" + id + ".setSelfingRate(" + selfing_rate + ");");
@@ -135,7 +135,7 @@ function (void)demes_schedule_events(object<Dictionary>$ model, [integer$ verbos
             lines = c(
                 "// " + name + ": split from " + ancestors[0],
                 "sim.addSubpopSplit(" + id + ", " + start_size + ", " + anc_id + ");",
-                "p"+id+".setValue(\"name\", \""+name+"\");",
+                "p"+id+".name = \""+name+"\";",
                 "p"+id+".setValue(\"ancestor_id\", "+anc_id+");"
             );
             if (selfing_rate > 0) {
@@ -156,7 +156,7 @@ function (void)demes_schedule_events(object<Dictionary>$ model, [integer$ verbos
             lines = c(
                 "// " + name + ": admixture of " + paste(ancestors),
                 "sim.addSubpop(" + id + ", " + start_size + ");",
-                "p"+id+".setValue(\"name\", \""+name+"\");",
+                "p"+id+".name = \""+name+"\";",
                 "p" + id + ".setMigrationRates(c(" + paste(anc_id, sep=", ") +
                     "), c(" + paste(proportions, sep=", ") + "));"
             );
@@ -264,24 +264,30 @@ function (void)demes_schedule_events(object<Dictionary>$ model, [integer$ verbos
     pulses  = model.getValue("pulses");
     if (length(pulses) > 0) {
         for (pulse in pulses) {
-            source = pulse.getValue("source");
+            sources = pulse.getValue("sources");
             dest = pulse.getValue("dest");
-            source_id = get_deme_id(model, source);
             dest_id = get_deme_id(model, dest);
             time = pulse.getValue("time");
-            proportion = pulse.getValue("proportion");
+            proportions = pulse.getValue("proportions");
+            assert(length(sources) == length(proportions));
 
-            lines = c(
-                "// " + source + " -> " + dest,
-                "p" + dest_id + ".setMigrationRates("+source_id+", "+proportion+");"
-            );
-            sb_add(script_blocks, lines, time, type="early");
+            i = 0;
+            for (source in sources) {
+                proportion = proportions[i];
+                source_id = get_deme_id(model, source);
+                lines = c(
+                    "// " + source + " -> " + dest,
+                    "p" + dest_id + ".setMigrationRates("+source_id+", "+proportion+");"
+                );
+                sb_add(script_blocks, lines, time, type="early");
 
-            lines = c(
-                "// " + source + " -| " + dest,
-                "p" + dest_id + ".setMigrationRates("+source_id+", 0);"
-            );
-            sb_add(script_blocks, lines, time, type="late");
+                lines = c(
+                    "// " + source + " -| " + dest,
+                    "p" + dest_id + ".setMigrationRates("+source_id+", 0);"
+                );
+                sb_add(script_blocks, lines, time, type="late");
+                i = i + 1;
+            }
         }
     }
 
