@@ -78,7 +78,7 @@ provided to obtain the integer SLiM ID of a deme from the deme's name.
   `json_file` --- The filename of the fully-resolved JSON-format Demes
     file that is to be loaded. Such a file can be generated from a Demes
     YAML file using [demes-python](https://popsim-consortium.github.io/demes-docs/):
-        `demes parse --json model.yaml > mode.json`.
+        `demes parse --json model.yaml > model.json`.
 
   `scaling_factor` --- Scale the model by the given value. Model times
     and deme sizes will be divided by this value, and migration rates
