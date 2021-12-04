@@ -57,8 +57,7 @@ provided to obtain the integer SLiM ID of a deme from the deme's name.
   [the Demes data model](https://popsim-consortium.github.io/demes-spec-docs/),
   with some changes:
 
-  * Deme sizes are divided by two and rounded to integers, to have units of
-    diploid individuals.
+  * Deme sizes are divided by the scaling factor and rounded to integers.
   * Times are converted to integer SLiM generations, which count forwards from
     the first generation (in Demes, time values increase towards the past).
   * The model dictionary is given an "end_time" field, defined as the generation
@@ -78,10 +77,8 @@ provided to obtain the integer SLiM ID of a deme from the deme's name.
 
   `json_file` --- The filename of the fully-resolved JSON-format Demes
     file that is to be loaded. Such a file can be generated from a Demes
-    YAML file using demes-python to load the YAML file and then dump the
-    file in JSON format (see `examples/convert.sh`).
-    Note that the value Infinity is not strictly valid in JSON, so infinite
-    values should be set to the string "Infinity".
+    YAML file using [demes-python](https://popsim-consortium.github.io/demes-docs/):
+        `demes parse --json model.yaml > mode.json`.
 
   `scaling_factor` --- Scale the model by the given value. Model times
     and deme sizes will be divided by this value, and migration rates
@@ -90,7 +87,7 @@ provided to obtain the integer SLiM ID of a deme from the deme's name.
     by the scaling factor (where relevant).
 
   `burn_in` --- The amount of time (in units of N generations) that will
-    be used at the start of the simulation to generate initial variation
+    be used at the start of the simulation to generate the initial variation
     and genealogy in the root subpopulation(s).
 
 ---

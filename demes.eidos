@@ -50,7 +50,7 @@ function (void)to_generations(object<Dictionary>$ model) {
 }
 
 /*
-  Check that the all the required keys are present in a dictionary.
+  Check all the required keys are present in a dictionary.
 */
 function (void)check_required(object<Dictionary>$ dict, string required_keys,
                               [string$ msg_prefix = ""]) {
@@ -66,7 +66,7 @@ function (void)check_required(object<Dictionary>$ dict, string required_keys,
 
   We could check more, but for now this assumes the input JSON file has
   been converted from YAML, and that the converter is conformant with
-  the Demes spec. This function catchs the most common problem: that the input
+  the Demes spec. This function catches the most common problem: that the input
   JSON file is a simplfied model, and not a fully-resolved model.
 */
 function (void)validate(object<Dictionary>$ model) {
@@ -176,8 +176,7 @@ function (integer$)N_root(object<Dictionary>$ model) {
 
 /*
   Convert the Demes model to have SLiM-compatible times and deme sizes.
-  Deme sizes are divided by two (to count diploid individuals), divided by
-  the scaling_factor, and converted to an integer.
+  Deme sizes are divided by the scaling_factor, and converted to an integer.
   Times in the Demes model are in units of generations ago, which we translate
   into integer SLiM generations relative to the end of the burn in period.
 
@@ -315,19 +314,18 @@ function (void)canonicalise(object<Dictionary>$ model, float$ scaling_factor, fl
 /*
   Load a fully-resolved JSON-format Demes model from a file.
 
-  * Deme sizes are divided by two and rounded to integers, to have units of
-    diploid individuals.
+  * Deme sizes are divided by the scaling factor and rounded to integers.
   * Times are converted to integer SLiM generations, which count forwards from
-    the first generation (Demes models, time values increase towards the past).
-  * The model dict is given an "end_time" field, defined as the generation
+    the first generation (in Demes, time values increase towards the past).
+  * The model dictionary is given an "end_time" field, defined as the generation
     in which the simulation should end (time=0 in most Demes models).
     The simulation then spans the open-closed interval (INF, model.end_time],
     where INF is approximated using a burn-in phase.
-  * Each deme dict is given an "end_time" field, defined as the generation
+  * Each deme dictionary is given an "end_time" field, defined as the generation
     in which the deme goes extinct. Each deme then spans the open-closed
     interval (deme.start_time, deme.end_time]. Thus, early() events referencing
     the deme are valid for generations [deme.start_time + 1, deme.end_time].
-  * Each epoch dict is given a "start_time" field. Each epoch then spans the
+  * Each epoch dictionary is given a "start_time" field. Each epoch then spans the
     open-closed interval (epoch.start_time, epoch.end_time].
     Parents in the epoch.start_time generation have properties following the
     previous (older) epoch (or their ancestor deme(s) if this is the first
