@@ -75,14 +75,19 @@ function (void)check_model_properties(object<Dictionary>$ model, string$ msg_pfx
                 v = pulse.getValue(k);
                 msg = msg_pfx + ": pulse" + i + ": " + k + " = " + v;
 
-                if (k == "source" | k ==  "dest") {
+                if (k == "sources") {
+                    for (source in v) {
+                        assert(!isNULL(get_deme_id(model, source)), msg);
+                    }
+                }
+                if (k ==  "dest") {
                     assert(!isNULL(get_deme_id(model, v)), msg);
                 }
                 if (k == "time") {
                     assert(type(v) == "integer", msg);
                     assert(v >= 1, msg);
                 }
-                if (k == "proportion") {
+                if (k == "proportions") {
                     assert(type(v) == "float", msg);
                     assert(v >= 0 & v <= 1, msg);
                 }
