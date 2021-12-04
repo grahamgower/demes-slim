@@ -172,10 +172,10 @@ def graph_to_scaled_discrete(graph: demes.Graph, scaling_factor=1.0) -> demes.Gr
 
     for pulse in graph.pulses:
         b.add_pulse(
-            source=pulse.source,
+            sources=pulse.sources,
             dest=pulse.dest,
             time=round(pulse.time / scaling_factor),
-            proportion=pulse.proportion,
+            proportions=pulse.proportions,
         )
 
     return b.resolve()
@@ -272,7 +272,8 @@ def check_states_against_graph(states, graph):
             mrow = list(migration_matrix[dest_id])
             for pulse in pulses_at_time.get(time, []):
                 if deme_id[pulse.dest] == dest_id:
-                    mrow[deme_id[pulse.source]] += pulse.proportion
+                    for source, proportion in zip(pulse.sources, pulse.proportions):
+                        mrow[deme_id[source]] += proportion
             assert sum(m > 0 for m in mrow) == len(state.immigrant_fracs), (
                 f"{dest_id} ({deme_names[dest_id]}): {state.time} ({time}): "
                 f"{mrow} inconsistent with {state.immigrant_pids} / {state.immigrant_fracs} "

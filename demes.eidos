@@ -111,7 +111,7 @@ function (void)validate(object<Dictionary>$ model) {
     if (length(pulses) > 0) {
         i = 0;
         for (pulse in pulses) {
-            check_required(pulse, c("time", "source", "dest", "proportion"),
+            check_required(pulse, c("time", "sources", "dest", "proportions"),
                            "pulses["+i+"]: ");
             i = i + 1;
         }

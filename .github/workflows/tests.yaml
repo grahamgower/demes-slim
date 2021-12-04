@@ -21,10 +21,10 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-18.04, macos-10.15]
-        slim_version: [720d0fd79e26b53dd02195035084a0cafab5f619]
+        slim_version: [d97f3852b36b1beb5556013d9940f6432b1716e9]
 
     steps:
-      - name: checkout deme-slim
+      - name: checkout demes-slim
         uses: actions/checkout@v2
 
       - name: checkout SLiM
