@@ -21,7 +21,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-18.04, macos-10.15]
-        slim_version: [d97f3852b36b1beb5556013d9940f6432b1716e9]
+        slim_version: ["v3.7"]
 
     steps:
       - name: checkout demes-slim

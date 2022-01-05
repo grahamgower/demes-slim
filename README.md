@@ -5,8 +5,7 @@ Demes-SLiM is SLiM/Eidos code for loading a
 demographic model into
 [SLiM](https://messerlab.org/slim/).
 
-Note: a development version of SLiM is currently required (the minumum
-version will be SLiM v3.7, once that is released).
+Note: Demes-SLiM requires SLiM v3.7.
 
 # WARNING
 
