@@ -115,19 +115,19 @@ function (void)demes_schedule_events(object<Dictionary>$ model, [integer$ verbos
         epochs = deme.getValue("epochs");
         start_size = epochs[0].getValue("start_size");
         ancestors = deme.getValue("ancestors");
-        selfing_rate = epochs[0].getValue("selfing_rate");
         cloning_rate = epochs[0].getValue("cloning_rate");
+        selfing_rate = (1 - cloning_rate) * epochs[0].getValue("selfing_rate");
         if (length(ancestors) == 0) {
             lines = c(
                 "// " + name + ": conjured from the void",
                 "sim.addSubpop(" + id + ", " + start_size + ");",
                 "p"+id+".name = \""+name+"\";"
             );
-            if (selfing_rate > 0) {
-                lines = c(lines, "p" + id + ".setSelfingRate(" + selfing_rate + ");");
-            }
             if (cloning_rate > 0) {
                 lines = c(lines, "p" + id + ".setCloningRate(" + cloning_rate + ");");
+            }
+            if (selfing_rate > 0) {
+                lines = c(lines, "p" + id + ".setSelfingRate(" + selfing_rate + ");");
             }
             sb_add(script_blocks, lines, start_time, type="late");
         } else if (length(ancestors) == 1) {
@@ -138,11 +138,11 @@ function (void)demes_schedule_events(object<Dictionary>$ model, [integer$ verbos
                 "p"+id+".name = \""+name+"\";",
                 "p"+id+".setValue(\"ancestor_id\", "+anc_id+");"
             );
-            if (selfing_rate > 0) {
-                lines = c(lines, "p" + id + ".setSelfingRate(" + selfing_rate + ");");
-            }
             if (cloning_rate > 0) {
                 lines = c(lines, "p" + id + ".setCloningRate(" + cloning_rate + ");");
+            }
+            if (selfing_rate > 0) {
+                lines = c(lines, "p" + id + ".setSelfingRate(" + selfing_rate + ");");
             }
             sb_add(script_blocks, lines, start_time, type="early");
         } else {
@@ -160,11 +160,11 @@ function (void)demes_schedule_events(object<Dictionary>$ model, [integer$ verbos
                 "p" + id + ".setMigrationRates(c(" + paste(anc_id, sep=", ") +
                     "), c(" + paste(proportions, sep=", ") + "));"
             );
-            if (selfing_rate > 0) {
-                lines = c(lines, "p" + id + ".setSelfingRate(" + selfing_rate + ");");
-            }
             if (cloning_rate > 0) {
                 lines = c(lines, "p" + id + ".setCloningRate(" + cloning_rate + ");");
+            }
+            if (selfing_rate > 0) {
+                lines = c(lines, "p" + id + ".setSelfingRate(" + selfing_rate + ");");
             }
             sb_add(script_blocks, lines, start_time, type="early");
 
@@ -211,8 +211,8 @@ function (void)demes_schedule_events(object<Dictionary>$ model, [integer$ verbos
                 stop("unexpected size_function: " + size_function);
             }
 
-            selfing_rate = epoch.getValue("selfing_rate");
             cloning_rate = epoch.getValue("cloning_rate");
+            selfing_rate = (1 - cloning_rate) * epoch.getValue("selfing_rate");
             do_selfing = F;
             do_cloning = F;
             if (i > 0) {
